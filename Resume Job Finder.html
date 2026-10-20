@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Resume Job Finder</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#5d6773;--bd:#dfe3e8;--ac:#2557d6;--acx:#fff;--chip:#e9eefc;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1e2228;--tx:#eceff3;--mu:#98a3b0;--bd:#323943;--ac:#6d93ff;--acx:#0d1424;--chip:#26304a}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1e2228;--tx:#eceff3;--mu:#98a3b0;--bd:#323943;--ac:#6d93ff;--acx:#0d1424;--chip:#26304a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1.05rem;margin:0 0 10px}
+.sub{color:var(--mu);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
+.drop{border:2px dashed var(--bd);border-radius:10px;padding:22px;text-align:center;cursor:pointer;color:var(--mu)}
+.drop:hover{border-color:var(--ac)}
+textarea,input,select{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:9px 10px;font:inherit}
+textarea{min-height:90px;margin-top:10px}
+label{display:block;font-size:.8rem;color:var(--mu);margin-bottom:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{background:var(--chip);border-radius:999px;padding:4px 11px;font-size:.85rem;border:1px solid transparent}
+.chip.role{cursor:pointer;border-color:var(--bd);background:transparent}
+.chip.role.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+button,a.btn{background:var(--ac);color:var(--acx);border:0;border-radius:8px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+a.btn.sm{padding:6px 10px;font-size:.85rem;font-weight:500;margin:3px 6px 3px 0}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--bd)}
+.row:first-child{border-top:0}
+.pn{font-weight:650}.pd{color:var(--mu);font-size:.82rem}
+.hide{display:none}.note{color:var(--mu);font-size:.8rem;margin-top:10px}
+</style>
+</head>
+<body>
+<main>
+<h1>Resume Job Finder</h1>
+<p class="sub">Upload your resume. It's read in your browser only (nothing is uploaded), then matched to roles and turned into filtered searches on the major job platforms.</p>
+
+<section class="card">
+<h2>1. Your resume</h2>
+<div class="drop" id="drop">Click to choose a PDF, DOCX or TXT file<input id="file" type="file" accept=".pdf,.docx,.txt" class="hide"></div>
+<textarea id="paste" placeholder="…or paste your resume text here"></textarea>
+<div style="margin-top:10px"><button id="scan">Scan resume</button> <span id="status" class="pd"></span></div>
+</section>
+
+<section class="card hide" id="res">
+<h2>2. What we found</h2>
+<label>Skills detected</label><div class="chips" id="skills"></div>
+<div style="margin-top:14px"><label>Suggested roles (tap to select, or add your own below)</label><div class="chips" id="roles"></div></div>
+<div style="margin-top:8px"><input id="custom" placeholder="Add a custom job title, then press Enter"></div>
+</section>
+
+<section class="card hide" id="fil">
+<h2>3. Filters</h2>
+<div class="grid">
+<div><label>Experience</label><select id="exp"><option value="0">Fresher / 0–1 yr</option><option value="2">1–3 yrs</option><option value="4">3–5 yrs</option><option value="6">5–8 yrs</option><option value="9">8+ yrs</option></select></div>
+<div><label>Location (city or country)</label><input id="loc" list="locs" placeholder="e.g. Dubai, Germany, Kochi"><datalist id="locs"></datalist></div>
+<div><label>Job type</label><select id="jt"><option value="">Any</option><option value="F">Full-time</option><option value="I">Internship</option><option value="C">Contract</option><option value="R">Remote</option></select></div>
+<div><label>Posted</label><select id="date"><option value="">Any time</option><option value="1">Last 24 hours</option><option value="7">Last week</option><option value="30">Last month</option></select></div>
+</div>
+<label style="margin-top:12px;display:flex;gap:8px;align-items:center"><input type="checkbox" id="visa" style="width:auto"> Only roles mentioning visa sponsorship / relocation</label>
+</section>
+
+<section class="card hide" id="out">
+<h2>4. Search results</h2>
+<div id="list"></div>
+<p class="note">Each link opens the platform's own results page with your filters applied, so listings are always live. You may need to sign in on some sites.</p>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SKILLS=['vapt','penetration testing','burp suite','owasp','nmap','metasploit','wireshark','kali linux','siem','soc','splunk','nessus','threat modeling','incident response','network security','cryptography','python','java','javascript','typescript','react','node.js','angular','html','css','sql','mysql','mongodb','postgresql','django','flask','spring boot','bash','linux','docker','kubernetes','aws','azure','gcp','terraform','jenkins','ci/cd','git','github','machine learning','deep learning','pandas','numpy','tensorflow','power bi','tableau','excel','iot','embedded','pcb design','8051','arduino','raspberry pi','microcontroller','vhdl','verilog','matlab','ccna','networking','c++','c#','php','kotlin','android','flutter','figma','selenium','testing'];
+const ROLES=[
+['VAPT Analyst',['vapt','burp suite','owasp','metasploit','nessus']],
+['Penetration Tester',['penetration testing','burp suite','metasploit','kali linux','nmap']],
+['Cybersecurity Analyst',['siem','soc','splunk','incident response','network security','wireshark','vapt']],
+['SOC Analyst',['siem','soc','splunk','incident response']],
+['Python Developer',['python','django','flask']],
+['Java Developer',['java','spring boot']],
+['Frontend Developer',['react','javascript','typescript','html','css','angular']],
+['Full Stack Developer',['node.js','react','mongodb','sql','javascript']],
+['DevOps Engineer',['docker','kubernetes','aws','terraform','jenkins','ci/cd','azure','gcp']],
+['Cloud Engineer',['aws','azure','gcp','terraform']],
+['Data Analyst',['sql','excel','power bi','tableau','pandas']],
+['Machine Learning Engineer',['machine learning','deep learning','tensorflow','numpy']],
+['Embedded Systems Engineer',['embedded','8051','microcontroller','arduino','pcb design','iot','verilog','vhdl']],
+['IoT Engineer',['iot','raspberry pi','arduino','embedded']],
+['Network Engineer',['ccna','networking','network security']],
+['QA / Test Engineer',['selenium','testing']],
+['Android Developer',['android','kotlin','flutter']]];
+// city/country -> [code, indeed domain]
+const GEO={thiruvananthapuram:'in',trivandrum:'in',kochi:'in',cochin:'in',kozhikode:'in',bengaluru:'in',bangalore:'in',chennai:'in',hyderabad:'in',mumbai:'in',pune:'in',delhi:'in',india:'in',kerala:'in',dubai:'ae','abu dhabi':'ae',sharjah:'ae',uae:'ae','united arab emirates':'ae',berlin:'de',munich:'de',germany:'de',amsterdam:'nl',netherlands:'nl',dublin:'ie',ireland:'ie',london:'uk','united kingdom':'uk',uk:'uk',paris:'fr',france:'fr'};
+const IND={in:'in.indeed.com',ae:'ae.indeed.com',de:'de.indeed.com',nl:'nl.indeed.com',ie:'ie.indeed.com',uk:'uk.indeed.com',fr:'fr.indeed.com'};
+Object.keys(GEO).sort().forEach(k=>{const o=document.createElement('option');o.value=k.replace(/\b\w/g,c=>c.toUpperCase());$('locs').appendChild(o)});
+let roles=[],sel=new Set();
+
+$('drop').onclick=()=>$('file').click();
+$('file').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  $('status').textContent='Reading '+f.name+'…';
+  try{
+    let t='';const n=f.name.toLowerCase();
+    if(n.endsWith('.pdf')){
+      if(typeof pdfjsLib==='undefined')throw new Error('PDF reader unavailable');
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+      for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);t+=(await p.getTextContent()).items.map(x=>x.str).join(' ')+'\n'}
+    }else if(n.endsWith('.docx')){
+      if(typeof mammoth==='undefined')throw new Error('DOCX reader unavailable');
+      t=(await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})).value;
+    }else t=await f.text();
+    $('paste').value=t;$('status').textContent='Loaded '+f.name;scan();
+  }catch(err){$('status').textContent='Could not read file ('+err.message+'). Please paste the text instead.'}
+};
+$('scan').onclick=scan;
+
+function scan(){
+  const raw=$('paste').value;const t=raw.toLowerCase();
+  if(t.trim().length<30){$('status').textContent='Add or paste your resume first.';return}
+  const found=SKILLS.filter(s=>new RegExp('(^|[^a-z0-9+#])'+s.replace(/[.*+?^${}()|[\]\\\/]/g,'\\$&')+'($|[^a-z0-9+#])').test(t));
+  $('skills').innerHTML=found.length?found.map(s=>'<span class="chip">'+esc(s)+'</span>').join(''):'<span class="pd">No known skills detected, add a job title below.</span>';
+  const scored=ROLES.map(([r,k])=>[r,k.filter(x=>found.includes(x)).length]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  roles=scored.map(x=>x[0]);sel=new Set(roles.slice(0,3));drawRoles();
+  // experience
+  let yrs=0;[...t.matchAll(/(\d{1,2})\+?\s*(?:years|yrs)/g)].forEach(m=>{yrs=Math.max(yrs,+m[1])});
+  $('exp').value=yrs>=9?'9':yrs>=6?'6':yrs>=4?'4':yrs>=2?'2':'0';
+  // location
+  const hit=Object.keys(GEO).find(k=>t.includes(k));
+  if(hit&&!$('loc').value)$('loc').value=hit.replace(/\b\w/g,c=>c.toUpperCase());
+  ['res','fil','out'].forEach(i=>$(i).classList.remove('hide'));
+  $('status').textContent='Done. Adjust the filters below if needed.';
+  render();$('res').scrollIntoView({behavior:'smooth'});
+}
+function drawRoles(){
+  $('roles').innerHTML=roles.map(r=>'<span class="chip role'+(sel.has(r)?' on':'')+'" data-r="'+esc(r)+'">'+esc(r)+'</span>').join('')||'<span class="pd">Type a job title below.</span>';
+  document.querySelectorAll('.chip.role').forEach(c=>c.onclick=()=>{const r=c.dataset.r;sel.has(r)?sel.delete(r):sel.add(r);drawRoles();render()});
+}
+$('custom').onkeydown=e=>{if(e.key==='Enter'&&e.target.value.trim()){const v=e.target.value.trim();if(!roles.includes(v))roles.push(v);sel.add(v);e.target.value='';drawRoles();render()}};
+['exp','loc','jt','date','visa'].forEach(i=>$(i).addEventListener('input',render));
+
+function render(){
+  const loc=$('loc').value.trim(),lk=loc.toLowerCase(),cc=GEO[lk]||GEO[Object.keys(GEO).find(k=>lk.includes(k))]||'';
+  const exp=+$('exp').value,jt=$('jt').value,dt=$('date').value,visa=$('visa').checked;
+  const lvl={0:'1,2',2:'2,3',4:'3,4',6:'4',9:'4,5,6'}[exp];
+  const P=[
+   {n:'LinkedIn',d:'Global',f:(q,l)=>'https://www.linkedin.com/jobs/search/?keywords='+enc(q+vx())+(l?'&location='+enc(l):'')+'&f_E='+lvl.split(',').map(x=>x).join('%2C')+(jt&&jt!=='R'?'&f_JT='+jt:'')+(jt==='R'?'&f_WT=2':'')+(dt?'&f_TPR=r'+dt*86400:'')},
+   {n:'Indeed',d:'Global',f:(q,l)=>'https://'+(IND[cc]||'www.indeed.com')+'/jobs?q='+enc(q+vx()+jx())+(l?'&l='+enc(l):'')+(dt?'&fromage='+dt:'')},
+   {n:'Glassdoor',d:'Global',f:(q,l)=>'https://www.glassdoor.com/Job/jobs.htm?sc.keyword='+enc(q+vx()+jx())+(l?'&locKeyword='+enc(l):'')+(dt?'&fromAge='+dt:'')},
+   {n:'Google Jobs',d:'Aggregates many sites',f:(q,l)=>'https://www.google.com/search?ibp=htl;jobs&q='+enc(q+vx()+jx()+(l?' jobs in '+l:' jobs'))},
+   {n:'Naukri',d:'India',only:['in'],f:(q,l)=>'https://www.naukri.com/'+slug(q)+'-jobs'+(l?'-in-'+slug(l):'')+'?experience='+Math.max(0,exp===0?0:exp-1)+(dt?'&jobAge='+dt:'')},
+   {n:'foundit',d:'India',only:['in'],f:(q,l)=>'https://www.foundit.in/srp/results?query='+enc(q+vx()+jx())+(l?'&locations='+enc(l):'')},
+   {n:'Bayt',d:'Gulf / Middle East',only:['ae'],f:(q)=>'https://www.bayt.com/en/uae/jobs/'+slug(q+vx())+'-jobs/'}
+  ];
+  function vx(){return visa?' visa sponsorship':''}
+  function jx(){return jt==='I'?' internship':jt==='R'?' remote':jt==='C'?' contract':''}
+  const rs=[...sel];
+  if(!rs.length){$('list').innerHTML='<p class="pd">Select at least one role above.</p>';return}
+  const use=P.filter(p=>!p.only||!cc||p.only.includes(cc));
+  $('list').innerHTML=use.map(p=>'<div class="row"><div><div class="pn">'+p.n+'</div><div class="pd">'+p.d+'</div></div><div>'+rs.map(r=>'<a class="btn sm" target="_blank" rel="noopener noreferrer" href="'+esc(p.f(r,loc))+'">'+esc(r)+'</a>').join('')+'</div></div>').join('');
+}
+function enc(s){return encodeURIComponent(s)}
+function slug(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+</script>
+</body>
+</html>
